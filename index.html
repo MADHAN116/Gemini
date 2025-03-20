@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Career Nexus</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #e0eafc, #cfdef3);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .chat-container {
+            width: 100%;
+            max-width: 900px;
+            background: #fff;
+            border-radius: 15px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+            padding: 25px;
+            overflow: hidden;
+        }
+        h2 {
+            color: #2c3e50;
+            font-size: 26px;
+            margin: 0 0 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        h2::before {
+            content: '🤖';
+        }
+        .messages {
+            height: 400px;
+            background: #f8f9fa;
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 15px;
+            overflow-y: auto;
+            text-align: left;
+            box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.05);
+        }
+        .message {
+            margin: 10px 0;
+            padding: 12px 15px;
+            border-radius: 8px;
+            max-width: 90%;
+            word-wrap: break-word;
+            line-height: 1.5;
+        }
+        .user {
+            background: #3498db;
+            color: white;
+            margin-left: auto;
+            text-align: right;
+        }
+        .bot {
+            background: #ecf0f1;
+            color: #2c3e50;
+            text-align: left;
+        }
+        .bot table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            font-size: 14px;
+            border-radius: 5px;
+            overflow: hidden;
+            table-layout: fixed;
+        }
+        .bot th, .bot td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .bot th {
+            background: #3498db;
+            color: white;
+            font-weight: 600;
+        }
+        .bot td {
+            background: #fff;
+        }
+        .bot a {
+            color: #2980b9;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+        .bot a:hover {
+            color: #e74c3c;
+            text-decoration: underline;
+        }
+        .bot ul {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        .bot li {
+            margin-bottom: 5px;
+        }
+        .input-container {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        input {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.3s ease;
+        }
+        input:focus {
+            border-color: #3498db;
+            box-shadow: 0 0 5px rgba(52, 152, 219, 0.3);
+        }
+        button {
+            padding: 12px 20px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s ease;
+        }
+        button:hover {
+            background: #2980b9;
+        }
+        button:active {
+            background: #1f6692;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <h2>Career Nexus</h2>
+        <div class="messages" id="chat-box"></div>
+        <div class="input-container">
+            <input type="text" id="user-input" placeholder="Type a message..." />
+            <button onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+
+    <script>
+        async function sendMessage() {
+            const inputField = document.getElementById("user-input");
+            const chatBox = document.getElementById("chat-box");
+            const userMessage = inputField.value.trim();
+
+            if (!userMessage) return;
+
+            chatBox.innerHTML += `<div class="message user">${userMessage}</div>`;
+            inputField.value = "";
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            try {
+                const response = await fetch("http://localhost:3000/ask", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ input: userMessage }),
+                });
+
+                if (!response.ok) throw new Error(`HTTP error: ${response.status}`);
+
+                const data = await response.json();
+                let botMessage = data.response || "⚠️ Error: No response from server.";
+                let html = '';
+
+                const queryLower = userMessage.toLowerCase();
+                const asPoints = queryLower.includes("give as points") || queryLower.includes("in points");
+                const asPara = queryLower.includes("give as para") || queryLower.includes("in para");
+                const isBrief = queryLower.includes("brief");
+
+                const sections = botMessage.split(/\n\n+/);
+
+                sections.forEach(section => {
+                    const lines = section.split('\n').filter(line => line.trim());
+
+                    if (asPoints) {
+                        html += '<ul>';
+                        lines.forEach(line => {
+                            const cleanLine = line.replace(/^(\d+\.\s|-\s)/, '');
+                            html += `<li>${cleanLine}</li>`;
+                        });
+                        html += '</ul>';
+                    } else if (asPara) {
+                        const text = lines.join(' ');
+                        html += `<p>${isBrief ? text.slice(0, 100) + (text.length > 100 ? '...' : '') : text}</p>`;
+                    } else if (lines.some(line => line.includes("----"))) {
+                        const headerIndex = lines.findIndex(line => line.includes("----"));
+                        if (headerIndex === -1) return;
+
+                        if (headerIndex > 0) {
+                            html += `<p>${lines.slice(0, headerIndex).join(' ')}</p>`;
+                        }
+
+                        const headers = lines[headerIndex - 1].split(/\s{2,}/).map(h => h.trim());
+                        html += '<table>';
+                        html += `<tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr>`;
+                        for (let i = headerIndex + 1; i < lines.length; i++) {
+                            const cols = lines[i].split(/\s{2,}/).map(c => c.trim());
+                            html += '<tr>';
+                            cols.forEach(col => {
+                                const content = col.startsWith("https://www.linkedin.com")
+                                    ? `<a href="${col}" target="_blank">${col}</a>` : col;
+                                html += `<td>${content}</td>`;
+                            });
+                            html += '</tr>';
+                        }
+                        html += '</table>';
+                    } else if (lines.length > 1 && lines.some(line => line.includes("  "))) {
+                        html += '<table>';
+                        lines.forEach((line, index) => {
+                            const cols = line.split(/\s{2,}/).map(c => c.trim());
+                            html += '<tr>';
+                            cols.forEach(col => {
+                                const content = col.startsWith("https://www.linkedin.com")
+                                    ? `<a href="${col}" target="_blank">${col}</a>` : col;
+                                html += index === 0 
+                                    ? `<th>${content}</th>` 
+                                    : `<td>${content}</td>`;
+                            });
+                            html += '</tr>';
+                        });
+                        html += '</table>';
+                    } else {
+                        html += `<p>${lines.join(' ')}</p>`;
+                    }
+                });
+
+                chatBox.innerHTML += `<div class="message bot">${html}</div>`;
+                chatBox.scrollTop = chatBox.scrollHeight;
+            } catch (error) {
+                console.error("Fetch error:", error);
+                chatBox.innerHTML += `<div class="message bot"><p>⚠️ Error: Unable to reach the server.</p></div>`;
+                chatBox.scrollTop = chatBox.scrollHeight;
+            }
+        }
+
+        document.getElementById("user-input").addEventListener("keypress", function(event) {
+            if (event.key === "Enter") sendMessage();
+        });
+    </script>
+</body>
+</html>
